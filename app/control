@@ -1,0 +1,9 @@
+Package: com.yernar.walegacy
+Name: WA Legacy
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Lightweight chat client for legacy iOS (6-9) with QR login
+Maintainer: Yernar
+Author: Yernar
+Section: Social
+Depends: firmware (>= 6.0)
