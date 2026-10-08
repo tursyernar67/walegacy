@@ -1,0 +1,63 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      THEOS: ${{ github.workspace }}/theos
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential fakeroot git perl curl rsync zip unzip ldid libtinfo5 || \
+          sudo apt-get install -y build-essential fakeroot git perl curl rsync zip unzip ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$THEOS"
+          mkdir -p "$THEOS/toolchain"
+          curl -sL https://github.com/kabiroberai/swift-toolchain-linux/releases/download/v2.3.0/swift-5.8-ubuntu22.04.tar.xz \
+            | tar -xJ -C "$THEOS/toolchain"
+          rm -rf "$THEOS/sdks" && mkdir -p "$THEOS/sdks"
+          git clone --depth 1 https://github.com/theos/sdks.git "$THEOS/sdks-tmp"
+          mv "$THEOS"/sdks-tmp/*.sdk "$THEOS/sdks/" || true
+          if [ ! -d "$THEOS/sdks/iPhoneOS9.3.sdk" ]; then
+            git clone --depth 1 https://github.com/xybp888/iOS-SDKs.git "$THEOS/sdks-alt"
+            cp -R "$THEOS/sdks-alt/iPhoneOS9.3.sdk" "$THEOS/sdks/" 
+          fi
+          ls "$THEOS/sdks"
+
+      - name: Build app
+        working-directory: app
+        run: make stage FINALPACKAGE=1
+
+      - name: Create IPA
+        run: |
+          rm -rf Payload && mkdir Payload
+          cp -R app/.theos/_/Applications/WALegacy.app Payload/
+          zip -qry WALegacy.ipa Payload
+          ls -l WALegacy.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WALegacy-ipa
+          path: WALegacy.ipa
+
+      - name: Publish to Releases (latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest WALegacy.ipa --title "WA Legacy (latest build)" \
+            --notes "Unsigned IPA for iOS 6-9. Install on a jailbroken device (AppSync Unified) or sign it yourself."
