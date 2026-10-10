@@ -37,7 +37,7 @@
         UIRectFill(CGRectMake(0, 0, s, s));
     } else {
         CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
-        NSArray *cols = @[(id)top.CGColor, (id)bottom.CGColor];
+        NSArray *cols = @[(__bridge id)top.CGColor, (__bridge id)bottom.CGColor];
         CGGradientRef g = CGGradientCreateWithColors(cs, (__bridge CFArrayRef)cols, NULL);
         CGContextDrawLinearGradient(ctx, g, CGPointMake(0, 0), CGPointMake(0, s), 0);
         CGGradientRelease(g);

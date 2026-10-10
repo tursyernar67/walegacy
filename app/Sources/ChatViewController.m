@@ -248,8 +248,10 @@ static UIImage *ScaledImage(UIImage *img, CGFloat maxSide) {
     p.sourceType = type;
     NSArray *avail = [UIImagePickerController availableMediaTypesForSourceType:type];
     NSMutableArray *types = [NSMutableArray array];
-    if ([avail containsObject:(NSString *)kUTTypeImage]) [types addObject:(NSString *)kUTTypeImage];
-    if ([avail containsObject:(NSString *)kUTTypeMovie]) [types addObject:(NSString *)kUTTypeMovie];
+    NSString *imageType = (__bridge NSString *)kUTTypeImage;
+    NSString *movieType = (__bridge NSString *)kUTTypeMovie;
+    if ([avail containsObject:imageType]) [types addObject:imageType];
+    if ([avail containsObject:movieType]) [types addObject:movieType];
     p.mediaTypes = types;
     p.delegate = self;
     if (type == UIImagePickerControllerSourceTypeCamera) {
