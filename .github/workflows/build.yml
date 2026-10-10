@@ -43,7 +43,25 @@ jobs:
 
       - name: Build app
         working-directory: app
-        run: make stage FINALPACKAGE=1 ARCHS=armv7
+        run: |
+          set +e
+          make stage FINALPACKAGE=1 ARCHS=armv7 > ../build.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            grep -E "error|Error|\*\*\*" ../build.log | head -n 8 | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+          fi
+          exit $code
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Create IPA
         run: |
@@ -68,4 +86,3 @@ jobs:
           gh release create latest WALegacy.ipa \
             --title "WA Legacy (latest build)" \
             --notes "Unsigned IPA for jailbroken iOS 6-9 devices."
-
