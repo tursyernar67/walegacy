@@ -68,3 +68,4 @@ jobs:
           gh release create latest WALegacy.ipa \
             --title "WA Legacy (latest build)" \
             --notes "Unsigned IPA for jailbroken iOS 6-9 devices."
+
