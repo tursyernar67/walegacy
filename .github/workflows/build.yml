@@ -1,0 +1,70 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      THEOS: ${{ github.workspace }}/theos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential fakeroot git perl curl rsync zip unzip libxml2 libtinfo6
+          sudo apt-get install -y ldid || true
+
+      - name: Install Theos and toolchain
+        run: |
+          set -eo pipefail
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$THEOS"
+          mkdir -p "$THEOS/toolchain"
+          curl -fsSL https://github.com/L1ghtmann/llvm-project/releases/latest/download/iOSToolchain-x86_64.tar.xz | tar -xJ -C "$THEOS/toolchain"
+          ls "$THEOS/toolchain"
+          test -x "$THEOS/toolchain/linux/iphone/bin/clang"
+
+      - name: Get iOS 9.3 SDK
+        run: |
+          set -eo pipefail
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git sdks-tmp
+          git -C sdks-tmp sparse-checkout set iPhoneOS9.3.sdk
+          mkdir -p "$THEOS/sdks"
+          cp -R sdks-tmp/iPhoneOS9.3.sdk "$THEOS/sdks/"
+          ls "$THEOS/sdks"
+
+      - name: Build app
+        working-directory: app
+        run: make stage FINALPACKAGE=1 ARCHS=armv7
+
+      - name: Create IPA
+        run: |
+          set -eo pipefail
+          rm -rf Payload
+          mkdir Payload
+          cp -R app/.theos/_/Applications/WALegacy.app Payload/
+          zip -qry WALegacy.ipa Payload
+          ls -lh WALegacy.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: WALegacy-ipa
+          path: WALegacy.ipa
+
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest WALegacy.ipa \
+            --title "WA Legacy (latest build)" \
+            --notes "Unsigned IPA for jailbroken iOS 6-9 devices."
